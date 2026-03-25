@@ -167,6 +167,7 @@ __pycache__/
 # ML files
 model.pkl
 scaler.pkl
+model_metadata.json
 
 # VS Code
 .vscode/
