@@ -1,122 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loan Approval Predictor</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        /* Popup modal styles */
-        .popup-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 999;
-        }
-
-        .popup {
-            background: #fff;
-            padding: 30px 40px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            animation: popin 0.3s ease;
-        }
-
-        @keyframes popin {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        .popup h3 {
-            margin: 0 0 10px;
-            font-size: 20px;
-        }
-
-        .popup button {
-            background: linear-gradient(90deg, #8b5cf6, #ec4899);
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-
-        .popup button:hover {
-            transform: scale(1.05);
-        }
-    </style>
 </head>
 <body>
     <div class="container">
-        <h2>Loan Approval Predictor</h2>
-        <form action="/predict" method="post" id="predictForm">
-            <label>Income:</label>
-            <input type="number" step="any" name="Income" required>
+        <h1>Loan Approval Predictor</h1>
+        <p class="subtitle">Enter applicant details to estimate approval probability.</p>
 
-            <label>Credit Score:</label>
-            <input type="number" step="any" name="Credit_Score" required>
+        <form id="predictForm" novalidate>
+            <label for="income">Income</label>
+            <input id="income" type="number" step="any" min="0" max="1000000" name="Income" required>
 
-            <label>Loan Amount:</label>
-            <input type="number" step="any" name="Loan_Amount" required>
+            <label for="credit">Credit Score</label>
+            <input id="credit" type="number" step="1" min="300" max="900" name="Credit_Score" required>
 
-            <label>DTI Ratio:</label>
-            <input type="number" step="any" name="DTI_Ratio" required>
+            <label for="loan">Loan Amount</label>
+            <input id="loan" type="number" step="any" min="0" max="2000000" name="Loan_Amount" required>
 
-            <label>Employment Status:</label>
-            <select name="Employment_Status" required>
-                <option value="0">Employed</option>
-                <option value="1">Self-Employed</option>
-                <option value="2">Unemployed</option>
-                <option value="3">Other</option>
+            <label for="dti">DTI Ratio (%)</label>
+            <input id="dti" type="number" step="any" min="0" max="100" name="DTI_Ratio" required>
+
+            <label for="status">Employment Status</label>
+            <select id="status" name="Employment_Status" required>
+                <option value="employed">Employed</option>
+                <option value="unemployed">Unemployed</option>
             </select>
 
             <button type="submit">Predict</button>
         </form>
 
-        {% if result %}
-            <div class="result" style="display:none;">{{ result }}</div>
-        {% endif %}
+        <p id="inlineError" class="inline-error" aria-live="polite"></p>
     </div>
 
-    <!-- Popup -->
-    <div class="popup-overlay" id="popupOverlay">
+    <div class="popup-overlay" id="popupOverlay" role="dialog" aria-modal="true" aria-labelledby="popupText">
         <div class="popup">
             <h3 id="popupText"></h3>
-            <button onclick="closePopup()">OK</button>
+            <button type="button" id="closePopup">OK</button>
         </div>
     </div>
 
     <script>
-    // Handle form submission without reloading
-    document.getElementById("predictForm").addEventListener("submit", async function(event) {
-        event.preventDefault();
+        const form = document.getElementById("predictForm");
+        const popupOverlay = document.getElementById("popupOverlay");
+        const popupText = document.getElementById("popupText");
+        const closePopupButton = document.getElementById("closePopup");
+        const inlineError = document.getElementById("inlineError");
 
-        const formData = new FormData(this);
-        const response = await fetch("/predict", {
-            method: "POST",
-            body: formData
+        form.addEventListener("submit", async function (event) {
+            event.preventDefault();
+            inlineError.textContent = "";
+
+            const payload = Object.fromEntries(new FormData(form).entries());
+
+            try {
+                const response = await fetch("/predict", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.ok) {
+                    const errors = data.errors ? data.errors.join(" ") : "Unable to process prediction.";
+                    inlineError.textContent = errors;
+                    return;
+                }
+
+                popupText.textContent = data.message;
+                popupOverlay.style.display = "flex";
+            } catch (error) {
+                inlineError.textContent = "Server error. Please try again.";
+            }
         });
 
-        const text = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(text, "text/html");
-        const resultDiv = doc.querySelector(".result");
-
-        if (resultDiv) {
-            document.getElementById("popupText").textContent = resultDiv.textContent;
-            document.getElementById("popupOverlay").style.display = "flex";
-        }
-    });
-
-    function closePopup() {
-        document.getElementById("popupOverlay").style.display = "none";
-    }
+        closePopupButton.addEventListener("click", function () {
+            popupOverlay.style.display = "none";
+        });
     </script>
 </body>
 </html>
