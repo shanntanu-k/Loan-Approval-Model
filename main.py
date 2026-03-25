@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from xml.parsers.expat import model
 
-import joblib
 from flask import Flask, jsonify, render_template, request
+import joblib
 
 from train import train_and_save
+import pandas as pd
+
 
 MODEL_PATH = "model.pkl"
 NUMERIC_FIELDS = {
@@ -88,7 +91,13 @@ def predict() -> tuple[Any, int]:
         return jsonify({"ok": False, "errors": errors}), 400
 
     model = get_model()
-    feature_row = [[cleaned["Income"], cleaned["Credit_Score"], cleaned["Loan_Amount"], cleaned["DTI_Ratio"], cleaned["Employment_Status"]]]
+    feature_row = pd.DataFrame([{
+    "Income": cleaned["Income"],
+    "Credit_Score": cleaned["Credit_Score"],
+    "Loan_Amount": cleaned["Loan_Amount"],
+    "DTI_Ratio": cleaned["DTI_Ratio"],
+    "Employment_Status": cleaned["Employment_Status"]
+}])
     prediction = int(model.predict(feature_row)[0])
     probability = float(model.predict_proba(feature_row)[0][prediction])
     confidence = round(probability * 100, 2)
