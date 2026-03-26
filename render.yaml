@@ -2,6 +2,7 @@ services:
   - type: web
     name: loan-approval-predictor
     env: python
+    pythonVersion: 3.11
     plan: free
     autoDeploy: true
     buildCommand: pip install -r requirements.txt && python train.py
